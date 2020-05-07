@@ -14,7 +14,7 @@ class cluster():
             self.objs = pickle.load(f)
 
         defname = path.join(rootdir,
-            coldefsname+'.pkl' if coldefsname is not None else clustname+ '_definition.pkl')
+            coldefsname+'_definition.pkl' if coldefsname is not None else clustname+ '_definition.pkl')
         with open(defname,'rb') as f:
             self.coldefs = pickle.load(f)
 
@@ -30,6 +30,34 @@ class cluster():
             ax = plt.subplot(111)
         
         ax.scatter(self.objs.RAdeg, self.objs.DEdeg, s=1, color='blue')
+
+    def plot_hrdiagram(self, **kwargs):
+        ax = kwargs.get('ax')
+        title = kwargs.get('title')
+        color = kwargs.get('color')
+        if color is None:
+            color='blue'
+
+        if ax is not None:
+            yax = ax
+        else:
+            yax = plt.subplot(111)
+
+        #distmod = 5*np.log10(self.objs.rest)-5
+        distance = coord.Distance(parallax=u.Quantity(np.array(self.objs.Plx)*u.mas),allow_negative=True)
+
+        abs_mag = self.objs.Gmag - distance.distmod.value
+        BP_RP = self.objs.BPmag - self.objs.RPmag
+
+        yax.scatter(BP_RP,abs_mag, s=1, color=color)
+        #yax.invert_yaxis()
+        yax.set_xlim(-1,5)
+        yax.set_ylim(20, -1)
+
+        yax.set_title(title)
+
+
+
          
 
 
