@@ -2,6 +2,9 @@ import pickle
 from os import path
 import re
 
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import cm
+
 class cluster():
 
     def __init__(self, clustname:str, rootdir:str, coldefsname=None):
@@ -19,6 +22,14 @@ class cluster():
         target = '.*' + rex + '.*'
         cols =   [(c, d['desc'])for c,d in self.coldefs.items() if re.match(target,d['desc'],flags=re.IGNORECASE)]
         return cols
+
+    def plot_radec(self, yax=None):
+        if yax is not None:
+            ax = yax
+        else:
+            ax = plt.subplot(111)
+        
+        ax.scatter(self.objs.RAdeg, self.objs.DEdeg, s=1, color='blue')
          
 
 
