@@ -7,6 +7,9 @@ from astropy.coordinates.sky_coordinate import SkyCoord
 from astropy.units import Quantity
 from pyvo.dal import TAPService
 
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import cm
+
 class fieldstars():
 
     __tap_service_url = "http://gaia.ari.uni-heidelberg.de/tap"
@@ -16,8 +19,12 @@ class fieldstars():
     __column_list = ['source_id', 'ra','dec','parallax','pmra','pmdec','radial_velocity',
                      'phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag','r_est']
 
+    def __init__(self, name:str):
+        self.name=name
+
+
     @u.quantity_input(ra='angle', dec='angle', rad='angle')
-    def __init__(self, ra, dec, radius, **kwargs):
+    def conesearch(self, ra, dec, radius, **kwargs):
 
         # input parameters in degrees:
         ra_ = ra.to(u.degree); dec_= dec.to(u.degree); rad_=radius.to(u.degree)
@@ -26,8 +33,8 @@ class fieldstars():
         plx_error_thresh = kwargs.get('plx_error_thresh')
 
         columnlist = ' '+ '\n\t\t,'.join(self.__column_list)
-        dbsource = '\n\t'.join(['\nFROM gaiadr2.gaia_source gs ',
-                    'LEFT JOIN gaiadr2_complements.geometric_distance gd using (source_id) '])
+        dbsource = '\n\t'.join(['\nFROM gaiadr2_complements.geometric_distance gd',
+                    'INNER JOIN gaiadr2.gaia_source gs using (source_id) '])
 
         constraints =  '\n\t'.join(['\nWHERE ', 
                 'CONTAINS(POINT(\'\', gs.ra, gs.dec), ',
@@ -47,6 +54,35 @@ class fieldstars():
 
         self.objs = tap_results.to_table().to_pandas()
         self.objs.set_index('source_id', inplace=True)
+
+    def plot_hrdiagram(self, **kwargs):
+        ax = kwargs.get('ax')
+        title = kwargs.get('title')
+        color = kwargs.get('color')
+
+        if color is None:
+            color='blue'
+
+        if ax is not None:
+            yax = ax
+        else:
+            yax = plt.subplot(111)
+
+        distmod = 5*np.log10(self.objs.r_est)-5
+        #distance = coord.Distance(parallax=u.Quantity(np.array(self.objs.Plx)*u.mas),allow_negative=True)
+
+        abs_mag = self.objs.phot_g_mean_mag - distmod
+        BP_RP = self.objs.phot_bp_mean_mag - self.objs.phot_rp_mean_mag
+
+        yax.scatter(BP_RP,abs_mag, s=1,  label=self.name, color=color)
+        if not yax.yaxis_inverted():
+            yax.invert_yaxis()
+        yax.set_xlim(-1,5)
+        #yax.set_ylim(20, -1)
+
+        yax.set_title(title)
+        if ax is None:
+            yax.legend()
 
 if __name__ == '__main__':
 

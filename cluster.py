@@ -1,6 +1,12 @@
 import pickle
 from os import path
 import re
+import numpy as np
+
+import astropy.units as u
+import astropy.coordinates as coord
+from astropy.coordinates.sky_coordinate import SkyCoord
+from astropy.units import Quantity
 
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
@@ -18,23 +24,28 @@ class cluster():
         with open(defname,'rb') as f:
             self.coldefs = pickle.load(f)
 
+        self.cluster_name = clustname
+
     def findcolumns(self, rex):
         target = '.*' + rex + '.*'
         cols =   [(c, d['desc'])for c,d in self.coldefs.items() if re.match(target,d['desc'],flags=re.IGNORECASE)]
         return cols
 
-    def plot_radec(self, yax=None):
-        if yax is not None:
-            ax = yax
+    def plot_radec(self, ax=None):
+        if ax is not None:
+            yax = ax
         else:
-            ax = plt.subplot(111)
+            yax = plt.subplot(111)
         
-        ax.scatter(self.objs.RAdeg, self.objs.DEdeg, s=1, color='blue')
+        yax.scatter(self.objs.RAdeg, self.objs.DEdeg, s=1, label=self.cluster_name, color='blue')
+        if ax is None:
+            yax.legend()
 
     def plot_hrdiagram(self, **kwargs):
         ax = kwargs.get('ax')
         title = kwargs.get('title')
         color = kwargs.get('color')
+
         if color is None:
             color='blue'
 
@@ -49,12 +60,15 @@ class cluster():
         abs_mag = self.objs.Gmag - distance.distmod.value
         BP_RP = self.objs.BPmag - self.objs.RPmag
 
-        yax.scatter(BP_RP,abs_mag, s=1, color=color)
-        #yax.invert_yaxis()
+        yax.scatter(BP_RP,abs_mag, s=1,  label=self.cluster_name, color=color)
+        if not yax.yaxis_inverted():
+            yax.invert_yaxis()
         yax.set_xlim(-1,5)
-        yax.set_ylim(20, -1)
+        #yax.set_ylim(20, -1)
 
         yax.set_title(title)
+        if ax is None:
+            yax.legend()
 
 
 
