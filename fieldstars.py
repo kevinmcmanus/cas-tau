@@ -84,6 +84,36 @@ class fieldstars():
         if ax is None:
             yax.legend()
 
+def from_pandas(df, colmapper, name=None):
+
+    my_fs = fieldstars(name=name)
+    src_cols = [c for c in colmapper.values()]
+    dest_cols = [c for c in colmapper.keys()]
+
+    arg_df = df.reset_index()
+
+    # source columns in argument dataframe?
+    inv_cols = set(src_cols).difference(arg_df.columns)
+    if len(inv_cols) != 0:
+        raise ValueError('invalid source column(s): '+str(inv_cols))
+
+    # get the right destination columns?
+    # case 1: too few dest columns given
+    missing_cols = set(__column_list).difference(dest_cols)
+    if len(missing_cols) != 0:
+        raise ValueError('Missing column mapping for: '+str(missinig_columns))
+    # case 2: too many dest columns given:
+    extra_cols = set(dest_cols).difference(__column_list)
+    if len(extra_cols) != 0:
+        raise ValueError('Invalid destination column supplied: '+str(extra_cols))
+    
+    #swap the keys and values for purposes of renaming:
+    col_renamer = {s:d for s,d in zip(src_cols, dest_cols)}
+    my_fs.objs = arg_df[src_cols].rename(columns = col_renamer, copy=True)
+
+    my_fs.objs.set_index('source_id', inplace=True)
+    return my_fs
+
 if __name__ == '__main__':
 
     fs = fieldstars(52.074625695066345*u.degree, 48.932707471347136*u.degree, 1.0*u.degree, plx_error_thresh=5, r_est=(175,185))
