@@ -10,17 +10,20 @@ from pyvo.dal import TAPService
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 
+
+__tap_service_url = "http://gaia.ari.uni-heidelberg.de/tap"
+__tap_service = TAPService(__tap_service_url)
+
+#default query columns:
+__column_list = ['source_id', 'ra','dec','parallax','pmra','pmdec','radial_velocity',
+                    'phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag','r_est']
+
 class fieldstars():
 
-    __tap_service_url = "http://gaia.ari.uni-heidelberg.de/tap"
-    __tap_service = TAPService(__tap_service_url)
-
-    #default query columns:
-    __column_list = ['source_id', 'ra','dec','parallax','pmra','pmdec','radial_velocity',
-                     'phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag','r_est']
 
     def __init__(self, name:str):
         self.name=name
+        self.coords = None
 
 
     @u.quantity_input(ra='angle', dec='angle', rad='angle')
@@ -84,6 +87,31 @@ class fieldstars():
         if ax is None:
             yax.legend()
 
+    def __get_coords__(self, recalc=False):
+        #computes and caches sky coordinates for the objects
+        #set recalc=True to force recalculation
+        if self.coords is None or recalc:
+
+            self.coords = coord.SkyCoord(ra=np.array(self.objs.ra)*u.degree,
+                   dec=np.array(self.objs.dec)*u.degree,
+                   distance=np.array(self.objs.r_est)*u.pc,
+                   pm_ra_cosdec=np.array(self.objs.pmra)*u.mas/u.yr,
+                   pm_dec=np.array(self.objs.pmdec)*u.mas/u.yr,
+                   radial_velocity=np.array(self.objs.radial_velocity)*u.km/u.s)
+
+    def get_coords(self):
+        #returns sky coordinates for the objects
+        self.__get_coords__(self)
+        return self.coords
+
+    def maxsep(self):
+        #computes maximum separation from mean of objects
+        ra_mean = self.objs.ra.mean()*u.degree
+        dec_mean = self.objs.dec.mean()*u.degree
+        c_mean=coord.SkyCoord(ra=ra_mean, dec=dec_mean)
+        seps = c_mean.separation(self.get_coords())
+        return seps.max()
+
 def from_pandas(df, colmapper, name=None):
 
     my_fs = fieldstars(name=name)
@@ -101,12 +129,12 @@ def from_pandas(df, colmapper, name=None):
     # case 1: too few dest columns given
     missing_cols = set(__column_list).difference(dest_cols)
     if len(missing_cols) != 0:
-        raise ValueError('Missing column mapping for: '+str(missinig_columns))
+        raise ValueError('Missing column mapping for: '+str(missing_cols))
     # case 2: too many dest columns given:
     extra_cols = set(dest_cols).difference(__column_list)
     if len(extra_cols) != 0:
         raise ValueError('Invalid destination column supplied: '+str(extra_cols))
-    
+
     #swap the keys and values for purposes of renaming:
     col_renamer = {s:d for s,d in zip(src_cols, dest_cols)}
     my_fs.objs = arg_df[src_cols].rename(columns = col_renamer, copy=True)
