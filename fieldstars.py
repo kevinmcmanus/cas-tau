@@ -11,11 +11,12 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 
 
-__tap_service_url = "http://gaia.ari.uni-heidelberg.de/tap"
-__tap_service = TAPService(__tap_service_url)
+tap_service_url = "http://gaia.ari.uni-heidelberg.de/tap"
+tap_service = TAPService(tap_service_url)
 
 #default query columns:
-__column_list = ['source_id', 'ra','dec','parallax','pmra','pmdec','radial_velocity',
+
+column_list = ['source_id', 'ra','dec','parallax','pmra','pmdec','radial_velocity',
                     'phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag','r_est']
 
 class fieldstars():
@@ -29,13 +30,19 @@ class fieldstars():
     @u.quantity_input(ra='angle', dec='angle', rad='angle')
     def conesearch(self, ra, dec, radius, **kwargs):
 
+        global column_list, tap_service_url, tap_service
+
         # input parameters in degrees:
         ra_ = ra.to(u.degree); dec_= dec.to(u.degree); rad_=radius.to(u.degree)
 
         r_est = kwargs.get('r_est')
         plx_error_thresh = kwargs.get('plx_error_thresh')
 
-        columnlist = ' '+ '\n\t\t,'.join(self.__column_list)
+        maxrec = kwargs.get('maxrec')
+        if maxrec is None:
+            maxrec=20000
+
+        columnlist = ' '+ '\n\t\t,'.join(column_list)
         dbsource = '\n\t'.join(['\nFROM gaiadr2_complements.geometric_distance gd',
                     'INNER JOIN gaiadr2.gaia_source gs using (source_id) '])
 
@@ -51,9 +58,9 @@ class fieldstars():
 
         self.tap_query_string = 'SELECT \n\t\t'+ columnlist + dbsource + constraints
 
-        tap_service = TAPService(self.__tap_service_url)
+        #tap_service = TAPService(self.__tap_service_url)
 
-        tap_results = tap_service.search(self.tap_query_string)
+        tap_results = tap_service.search(self.tap_query_string, maxrec=maxrec)
 
         self.objs = tap_results.to_table().to_pandas()
         self.objs.set_index('source_id', inplace=True)
@@ -127,11 +134,11 @@ def from_pandas(df, colmapper, name=None):
 
     # get the right destination columns?
     # case 1: too few dest columns given
-    missing_cols = set(__column_list).difference(dest_cols)
+    missing_cols = set(column_list).difference(dest_cols)
     if len(missing_cols) != 0:
         raise ValueError('Missing column mapping for: '+str(missing_cols))
     # case 2: too many dest columns given:
-    extra_cols = set(dest_cols).difference(__column_list)
+    extra_cols = set(dest_cols).difference(column_list)
     if len(extra_cols) != 0:
         raise ValueError('Invalid destination column supplied: '+str(extra_cols))
 
