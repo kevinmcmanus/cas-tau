@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pickle
 
 import astropy.units as u
 import astropy.coordinates as coord
@@ -84,6 +85,14 @@ class fieldstars():
         my_fs.tap_query_string = [self.tap_query_string, right.tap_query_string]
         
         return my_fs
+    
+    def to_pickle(self, picklepath):
+        """
+        pickles and dumps the object to file designated by picklepath
+        """
+        with open(picklepath,'wb') as pkl:
+            pickle.dump(self, pkl)
+        
 
     def plot_hrdiagram(self, **kwargs):
         ax = kwargs.get('ax')
@@ -139,7 +148,7 @@ class fieldstars():
         seps = c_mean.separation(self.get_coords())
         return seps.max()
 
-def from_pandas(df, colmapper, name=None):
+def from_pandas(df, colmapper, name=None) -> fieldstars:
 
     my_fs = fieldstars(name=name)
     src_cols = [c for c in colmapper.values()]
@@ -167,6 +176,19 @@ def from_pandas(df, colmapper, name=None):
     my_fs.objs = arg_df[src_cols].rename(columns = col_renamer, copy=True)
 
     my_fs.objs.set_index('source_id', inplace=True)
+    return my_fs
+
+
+def from_pickle(picklefile):
+    """
+    reads up a pickle file and hopefully it's a pickled fieldstars object
+    """
+    with open(picklefile,'rb') as pkl:
+        my_fs = pickle.load(pkl)
+        
+    if not isinstance(my_fs, fieldstars):
+        raise ValueError(f'pickle file contained a {type(my_fs)}')
+        
     return my_fs
 
 if __name__ == '__main__':
