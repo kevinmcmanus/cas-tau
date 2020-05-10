@@ -25,6 +25,7 @@ class fieldstars():
     def __init__(self, name:str):
         self.name=name
         self.coords = None
+        self.tap_query_string = None
 
 
     @u.quantity_input(ra='angle', dec='angle', rad='angle')
@@ -64,6 +65,25 @@ class fieldstars():
 
         self.objs = tap_results.to_table().to_pandas()
         self.objs.set_index('source_id', inplace=True)
+    
+    def merge(self, right):
+        # joins right fieldstars to self; returns result
+        consol_df = self.objs.merge(right.objs,left_index=True, right_index=True, how='outer', indicator=True)
+
+        consol_df['which'] = consol_df._merge.apply(lambda s: right.name if s == 'right_only' else self.name if s == 'left_only' else 'both')
+        
+        #fix up columns; preferential treatment for self's columns
+        mycols = self.objs.columns
+        for c in mycols:
+          consol_df[c]=np.where(np.isnan(consol_df[c+'_x']), consol_df[c+'_y'], consol_df[c+'_x'])
+
+        consol_df.drop(columns = [s+'_x' for s in mycols]+[s+'_y' for s in mycols], inplace=True)
+        
+        my_fs = fieldstars(name = self.name + ' merged with ' + right.name)
+        my_fs.objs = consol_df
+        my_fs.tap_query_string = [self.tap_query_string, right.tap_query_string]
+        
+        return my_fs
 
     def plot_hrdiagram(self, **kwargs):
         ax = kwargs.get('ax')
