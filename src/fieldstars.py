@@ -33,8 +33,8 @@ class fieldstars():
         'phot_bp_mean_flux_over_error>20',
         'phot_bp_rp_excess_factor < 1.3+0.06*power(phot_bp_mean_mag-phot_rp_mean_mag,2)',
         'phot_bp_rp_excess_factor > 1.0+0.015*power(phot_bp_mean_mag-phot_rp_mean_mag,2)',
-        'visibility_periods_used>8']) #,
-        #'astrometric_chi2_al/(astrometric_n_good_obs_al-5)<1.44*gaia_greatest(1,exp(-0.4*(phot_g_mean_mag-19.5)))'])
+        'visibility_periods_used>8',
+        'astrometric_chi2_al/(astrometric_n_good_obs_al-5)<1.44*greatest(1,exp(-0.4*(phot_g_mean_mag-19.5)))'])
 
     def __init__(self, name:str):
         self.name=name
@@ -54,7 +54,7 @@ class fieldstars():
         maxrec = kwargs.get('maxrec', 20000)
 
         columnlist = self._get_col_list() + ', gd.r_est'
-        dbsource = '\n\t'.join(['\nFROM gaiadr2_complements.geometric_distance gd',
+        dbsource = '\n\t'.join(['\nFROM external.gaiadr2_geometric_distance gd',
                     'INNER JOIN gaiadr2.gaia_source gs using (source_id) '])
 
         constraints =  '\n\t'.join(['\nWHERE ', 
@@ -66,10 +66,14 @@ class fieldstars():
 
         self.tap_query_string = 'SELECT \n\t\t'+ columnlist + dbsource + constraints
         
-        tap_service = TAPService(self.tap_service_url)
-        tap_results = tap_service.search(self.tap_query_string, maxrec=maxrec)
+        #tap_service = TAPService(self.tap_service_url)
+        #tap_results = tap_service.search(self.tap_query_string, maxrec=maxrec)
+        #self.objs = tap_results.to_table().to_pandas()
+        #fetch the data
+        
+        job = Gaia.launch_job_async(query=self.tap_query_string)
+        self.objs = job.get_results().to_pandas()
 
-        self.objs = tap_results.to_table().to_pandas()
         self.objs.set_index('source_id', inplace=True)
         
     def from_source_idlist(self, source_idlist, source_idcol=None, filters=False):
@@ -102,7 +106,7 @@ class fieldstars():
         
         dbsource =  ''.join([' FROM tap_upload.source_idlist sidl',
                             f' LEFT JOIN gaiadr2.gaia_source gs ON gs.source_id = sidl.{sidcol}',
-                            f' LEFT JOIN gaiadr2_complements.geometric_distance gd on gs.source_id = gd.source_id' ])
+                            f' LEFT JOIN external.gaiadr2_geometric_distance gd on gs.source_id = gd.source_id' ])
         
         query_str = f'SELECT sidl.{sidcol} as "source", '+col_list+dbsource
         if filters:
@@ -110,13 +114,13 @@ class fieldstars():
         self.tap_query_string = query_str
         
         #fetch the data
-        #job = Gaia.launch_job_async(query=query_str, upload_resource=xml_path,upload_table_name='source_idlist')
-        #self.objs = job.get_results().to_pandas()
+        job = Gaia.launch_job_async(query=query_str, upload_resource=xml_path,upload_table_name='source_idlist')
+        self.objs = job.get_results().to_pandas()
         
         #fetch data via tap query
-        tap_service = TAPService(self.tap_service_url)
-        tap_results = tap_service.search(self.tap_query_string, maxrec=len(tbl),uploads={'source_idlist':tbl})
-        self.objs = tap_results.to_table().to_pandas()
+        #tap_service = TAPService(self.tap_service_url)
+        #tap_results = tap_service.search(self.tap_query_string, maxrec=len(tbl),uploads={'source_idlist':tbl})
+        #self.objs = tap_results.to_table().to_pandas()
         
         
         self.objs.set_index('source', inplace=True)
