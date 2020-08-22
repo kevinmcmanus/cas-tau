@@ -183,7 +183,38 @@ class fieldstars():
         yax.set_xlabel('$G_{BP}\ -\ G_{RP}$', fontsize=14)
         if ax is None:
             yax.legend()
-
+            
+    def plot_motions(self, **kwargs):
+        from scipy.stats import kde
+        ax = kwargs.get('ax')
+        title = kwargs.get('title', 'Proper Motions')
+        cmap = kwargs.get('cmap', 'viridis')
+        nbins = kwargs.get('nbins', 300)
+   
+        if ax is None:
+            fig, yax = plt.subplots()
+        else:
+            yax = ax
+            
+        x = np.array(self.objs.pmra)
+        y = np.array(self.objs.pmdec)
+        
+        # Evaluate a gaussian kde on a regular grid of nbins x nbins over data extents
+        k = kde.gaussian_kde([x,y])
+        xi, yi = np.mgrid[x.min():x.max():nbins*1j, y.min():y.max():nbins*1j]
+        zi = k(np.vstack([xi.flatten(), yi.flatten()]))
+        
+        pcm = yax.pcolormesh(xi, yi, zi.reshape(xi.shape),cmap=cmap)
+        
+        yax.set_title(title)
+        yax.set_ylabel('PM Dec (mas/yr)')
+        yax.set_xlabel('PM RA (mas/yr)')
+        
+        if ax is None:
+            fig.colorbar(pcm)
+        
+        return pcm
+    
     def __get_coords__(self, recalc=False):
         #computes and caches sky coordinates for the objects
         #set recalc=True to force recalculation
