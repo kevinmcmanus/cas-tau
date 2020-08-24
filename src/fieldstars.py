@@ -8,7 +8,7 @@ from astropy.coordinates.sky_coordinate import SkyCoord
 from astropy.table import Table
 from astropy.units import Quantity
 from astroquery.gaia import Gaia
-from pyvo.dal import TAPService
+#from pyvo.dal import TAPService
 
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
